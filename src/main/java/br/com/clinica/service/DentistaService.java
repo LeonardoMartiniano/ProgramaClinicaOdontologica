@@ -3,19 +3,18 @@ package br.com.clinica.service;
 import br.com.clinica.model.Dentista;
 import br.com.clinica.repository.DentistaRepository;
 
+import java.util.List;
+
 public class DentistaService {
-    private final DentistaRepository repository = new DentistaRepository();
+    private final DentistaRepository dentistaRepository = new DentistaRepository();
 
     public void cadastrarDentista(String nome, String cro, String telefone) {
-
-        if (repository.buscarPorCro(cro) != null) {
-            System.out.println("❌ Já existe dentista com esse CRO.");
-            return;
-        }
-
         Dentista dentista = new Dentista(nome, cro, telefone);
-        repository.salvar(dentista);
+        dentistaRepository.salvar(dentista);
+        System.out.println("✅ Dentista cadastrado.");
+    }
 
-        System.out.println("✅ Dentista cadastrado com sucesso!");
+    public List<Dentista> listarDentistas() {
+        return dentistaRepository.listarTodos();
     }
 }

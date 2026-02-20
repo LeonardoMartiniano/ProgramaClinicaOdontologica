@@ -33,10 +33,11 @@ public class DentistaRepository {
 
     public List<Dentista> listarTodos() {
         EntityManager em = JPAUtil.getEntityManager();
-        List<Dentista> lista = em.createQuery(
-                "SELECT d FROM Dentista d", Dentista.class
-        ).getResultList();
+        List<Dentista> lista = em
+                .createQuery("FROM Dentista", Dentista.class)
+                .getResultList();
         em.close();
         return lista;
     }
+
 }

@@ -3,6 +3,8 @@ package br.com.clinica.service;
 import br.com.clinica.model.Paciente;
 import br.com.clinica.repository.PacienteRepository;
 
+import java.util.List;
+
 public class PacienteService {
     private final PacienteRepository repository = new PacienteRepository();
 
@@ -17,6 +19,9 @@ public class PacienteService {
         repository.salvar(paciente);
 
         System.out.println("✅ Paciente cadastrado com sucesso!");
+    }
+    public List<Paciente> listarPacientes() {
+        return repository.listarTodos();
     }
 
     public Paciente buscarPorCpf(String cpf) {

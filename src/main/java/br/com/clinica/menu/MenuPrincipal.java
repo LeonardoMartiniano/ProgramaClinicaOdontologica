@@ -1,11 +1,14 @@
 package br.com.clinica.menu;
 
+import br.com.clinica.model.Dentista;
+import br.com.clinica.model.Paciente;
 import br.com.clinica.model.StatusConsulta;
 import br.com.clinica.service.ConsultaService;
 import br.com.clinica.service.PacienteService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Scanner;
 import br.com.clinica.service.DentistaService;
 import br.com.clinica.service.PagamentoService;
@@ -34,6 +37,8 @@ public class MenuPrincipal {
             System.out.println("7 - Consultas do dia");
             System.out.println("8 - Consultas do paciente");
             System.out.println("9 - Atualizar status da consulta");
+            System.out.println("10 - Listar pacientes");
+            System.out.println("11 - Listar dentistas");
             System.out.println("0 - Sair");
             System.out.print("Escolha: ");
 
@@ -50,6 +55,8 @@ public class MenuPrincipal {
                 case 7 -> consultasDoDia();
                 case 8 -> consultasDoPaciente();
                 case 9 -> atualizarStatusConsulta();
+                case 10 -> listarPacientes();
+                case 11 -> listarDentistas();
                 case 0 -> System.out.println("Encerrando sistema...");
                 default -> System.out.println("Opção inválida.");
             }
@@ -111,8 +118,29 @@ public class MenuPrincipal {
         System.out.print("CPF do paciente: ");
         String cpf = scanner.nextLine();
 
-        System.out.print("CRO do dentista: ");
-        String cro = scanner.nextLine();
+        List<Dentista> dentistas = dentistaService.listarDentistas();
+
+        if (dentistas.isEmpty()) {
+            System.out.println("❌ Nenhum dentista cadastrado.");
+            return;
+        }
+
+        System.out.println("Dentistas disponíveis:");
+        for (int i = 0; i < dentistas.size(); i++) {
+            Dentista d = dentistas.get(i);
+            System.out.println((i + 1) + " - " + d.getNome() + " (CRO: " + d.getCro() + ")");
+        }
+
+        System.out.print("Escolha o dentista: ");
+        int escolha = scanner.nextInt();
+        scanner.nextLine();
+
+        if (escolha < 1 || escolha > dentistas.size()) {
+            System.out.println("❌ Opção inválida.");
+            return;
+        }
+
+        Dentista dentistaEscolhido = dentistas.get(escolha - 1);
 
         System.out.print("Data (AAAA-MM-DD): ");
         LocalDate data = LocalDate.parse(scanner.nextLine());
@@ -123,7 +151,13 @@ public class MenuPrincipal {
         System.out.print("Observação: ");
         String obs = scanner.nextLine();
 
-        consultaService.agendarConsulta(cpf, cro, data, hora, obs);
+        consultaService.agendarConsulta(
+                cpf,
+                dentistaEscolhido.getCro(),
+                data,
+                hora,
+                obs
+        );
     }
 
     private static void consultasDoDia() {
@@ -178,4 +212,45 @@ public class MenuPrincipal {
 
         consultaService.atualizarStatus(id, status);
     }
+    private static void listarPacientes() {
+
+        List<Paciente> lista = pacienteService.listarPacientes();
+
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum paciente cadastrado.");
+            return;
+        }
+
+        System.out.println("\n--- PACIENTES ---");
+
+        for (Paciente p : lista) {
+            String status = p.isPagamentoEmDia() ? "Em dia" : "Em atraso";
+
+            System.out.println(
+                    "Nome: " + p.getNome() +
+                            " | CPF: " + p.getCpf() +
+                            " | Tel: " + p.getTelefone() +
+                            " | Pagamento: " + status
+            );
+        }
+    }
+    private static void listarDentistas() {
+
+        List<Dentista> lista = dentistaService.listarDentistas();
+
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum dentista cadastrado.");
+            return;
+        }
+
+        System.out.println("\n--- DENTISTAS ---");
+
+        for (Dentista d : lista) {
+            System.out.println(
+                    "Nome: " + d.getNome() +
+                            " | CRO: " + d.getCro()
+            );
+        }
+    }
+
 }

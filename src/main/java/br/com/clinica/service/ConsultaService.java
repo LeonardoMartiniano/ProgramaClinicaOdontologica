@@ -69,6 +69,8 @@ public class ConsultaService {
 
         System.out.println("✅ Status atualizado.");
     }
+
+
     }
 
 
