@@ -1,17 +1,21 @@
 package br.com.clinica.menu;
 
+import br.com.clinica.model.Consulta;
 import br.com.clinica.model.Dentista;
 import br.com.clinica.model.Paciente;
 import br.com.clinica.model.StatusConsulta;
 import br.com.clinica.service.ConsultaService;
 import br.com.clinica.service.PacienteService;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import br.com.clinica.service.DentistaService;
 import br.com.clinica.service.PagamentoService;
+import br.com.clinica.util.AgendaUtil;
 
 
 public class MenuPrincipal {
@@ -39,6 +43,7 @@ public class MenuPrincipal {
             System.out.println("9 - Atualizar status da consulta");
             System.out.println("10 - Listar pacientes");
             System.out.println("11 - Listar dentistas");
+            System.out.println("12 - Agenda do dia");
             System.out.println("0 - Sair");
             System.out.print("Escolha: ");
 
@@ -57,6 +62,7 @@ public class MenuPrincipal {
                 case 9 -> atualizarStatusConsulta();
                 case 10 -> listarPacientes();
                 case 11 -> listarDentistas();
+                case 12 -> agendaDoDia();
                 case 0 -> System.out.println("Encerrando sistema...");
                 default -> System.out.println("Opção inválida.");
             }
@@ -142,11 +148,106 @@ public class MenuPrincipal {
 
         Dentista dentistaEscolhido = dentistas.get(escolha - 1);
 
-        System.out.print("Data (AAAA-MM-DD): ");
-        LocalDate data = LocalDate.parse(scanner.nextLine());
+        // =============================
+        // GERAR DIAS DISPONÍVEIS (30 dias)
+        // =============================
+        LocalDate hoje = LocalDate.now();
+        List<LocalDate> diasDisponiveis = new ArrayList<>();
 
-        System.out.print("Hora (HH:MM): ");
-        LocalTime hora = LocalTime.parse(scanner.nextLine());
+        for (int i = 0; i < 30; i++) {
+            LocalDate dia = hoje.plusDays(i);
+            if (dia.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                diasDisponiveis.add(dia);
+            }
+        }
+
+        System.out.println("\nDias disponíveis:");
+        for (int i = 0; i < diasDisponiveis.size(); i++) {
+            System.out.println((i + 1) + " - " + diasDisponiveis.get(i));
+        }
+
+        System.out.print("Escolha o dia: ");
+        int diaEscolhidoIndex = scanner.nextInt();
+        scanner.nextLine();
+
+        if (diaEscolhidoIndex < 1 || diaEscolhidoIndex > diasDisponiveis.size()) {
+            System.out.println("❌ Dia inválido.");
+            return;
+        }
+
+        LocalDate data = diasDisponiveis.get(diaEscolhidoIndex - 1);
+        DayOfWeek dow = data.getDayOfWeek();
+
+        // =============================
+        // ESCOLHER TURNO
+        // =============================
+        System.out.println("Turnos disponíveis:");
+        System.out.println("1 - Manhã (08:00 às 12:00)");
+
+        if (dow != DayOfWeek.SATURDAY) {
+            System.out.println("2 - Tarde (13:00 às 17:00)");
+        }
+
+        System.out.print("Escolha o turno: ");
+        int turno = scanner.nextInt();
+        scanner.nextLine();
+
+        List<LocalTime> horariosTurno = new ArrayList<>();
+
+        if (turno == 1) {
+            for (int h = 8; h < 12; h++) {
+                horariosTurno.add(LocalTime.of(h, 0));
+            }
+        } else if (turno == 2 && dow != DayOfWeek.SATURDAY) {
+            for (int h = 13; h < 17; h++) {
+                horariosTurno.add(LocalTime.of(h, 0));
+            }
+        } else {
+            System.out.println("❌ Turno inválido.");
+            return;
+        }
+
+        // =============================
+        // FILTRAR HORÁRIOS COM LIMITE 4 PACIENTES
+        // =============================
+        List<LocalTime> horariosDisponiveis = new ArrayList<>();
+
+        for (LocalTime h : horariosTurno) {
+
+            int total = consultaService.contarConsultasNoHorario(
+                    data,
+                    dentistaEscolhido.getCro(),
+                    h
+            );
+
+            if (total < 4) {
+                horariosDisponiveis.add(h);
+            }
+        }
+
+        if (horariosDisponiveis.isEmpty()) {
+            System.out.println("❌ Nenhum horário disponível nesse turno.");
+            return;
+        }
+
+        // =============================
+        // MOSTRAR HORÁRIOS DISPONÍVEIS
+        // =============================
+        System.out.println("\nHorários disponíveis:");
+        for (int i = 0; i < horariosDisponiveis.size(); i++) {
+            System.out.println((i + 1) + " - " + horariosDisponiveis.get(i));
+        }
+
+        System.out.print("Escolha o horário: ");
+        int hIndex = scanner.nextInt();
+        scanner.nextLine();
+
+        if (hIndex < 1 || hIndex > horariosDisponiveis.size()) {
+            System.out.println("❌ Horário inválido.");
+            return;
+        }
+
+        LocalTime horaEscolhida = horariosDisponiveis.get(hIndex - 1);
 
         System.out.print("Observação: ");
         String obs = scanner.nextLine();
@@ -155,7 +256,7 @@ public class MenuPrincipal {
                 cpf,
                 dentistaEscolhido.getCro(),
                 data,
-                hora,
+                horaEscolhida,
                 obs
         );
     }
@@ -249,6 +350,29 @@ public class MenuPrincipal {
             System.out.println(
                     "Nome: " + d.getNome() +
                             " | CRO: " + d.getCro()
+            );
+        }
+    }
+    private static void agendaDoDia() {
+
+        LocalDate hoje = LocalDate.now();
+
+        List<Consulta> consultas = consultaService.buscarAgendaDoDia(hoje);
+
+        System.out.println("\n=== AGENDA DO DIA " + hoje + " ===");
+
+        if (consultas.isEmpty()) {
+            System.out.println("Nenhuma consulta agendada.");
+            return;
+        }
+
+        for (Consulta c : consultas) {
+
+            System.out.println(
+                    c.getHora() + " | " +
+                            c.getDentista().getNome() + " | " +
+                            c.getPaciente().getNome() + " | " +
+                            c.getStatus()
             );
         }
     }

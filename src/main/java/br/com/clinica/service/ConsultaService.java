@@ -10,6 +10,7 @@ import br.com.clinica.repository.PacienteRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConsultaService {
@@ -18,19 +19,23 @@ public class ConsultaService {
     private final DentistaRepository dentistaRepository = new DentistaRepository();
 
 
-    public void agendarConsulta(String cpfPaciente, String croDenstista,
-                                LocalDate data, LocalTime hora, String obs){
+    public void agendarConsulta(String cpf, String cro, LocalDate data, LocalTime hora, String obs){
 
-        Paciente paciente = pacienteRepository.buscarPorCpf(cpfPaciente);
-        Dentista dentista = dentistaRepository.buscarPorCro(croDenstista);
+        Dentista dentista = dentistaRepository.buscarPorCro(cro);
+        Paciente paciente = pacienteRepository.buscarPorCpf(cpf);
 
-        if (paciente == null) {
-            System.out.println("❌ Paciente não encontrado.");
+        if (dentista == null || paciente == null) {
+            System.out.println("❌ Paciente ou dentista não encontrado.");
             return;
         }
 
-        if (dentista == null) {
-            System.out.println("❌ Dentista não encontrado.");
+        // 🔒 REGRA: máximo 4 consultas no mesmo horário
+        long totalNoHorario = consultaRepository.contarPorDentistaDataHora(
+                dentista, data, hora
+        );
+
+        if (totalNoHorario >= 4) {
+            System.out.println("❌ Horário cheio (máximo 4 pacientes). Escolha outro.");
             return;
         }
 
@@ -40,11 +45,10 @@ public class ConsultaService {
         consulta.setData(data);
         consulta.setHora(hora);
         consulta.setObservacao(obs);
-        consulta.setStatus(StatusConsulta.AGENDADA);
 
         consultaRepository.salvar(consulta);
 
-        System.out.println("✅ Consulta agendada com sucesso.");
+        System.out.println("✅ Consulta agendada com sucesso!");
     }
 
     public List<Consulta> consultasDoDia(LocalDate data) {
@@ -68,6 +72,47 @@ public class ConsultaService {
         consultaRepository.atualizar(consulta);
 
         System.out.println("✅ Status atualizado.");
+    }
+    public List<LocalTime> gerarHorariosManha() {
+        List<LocalTime> lista = new ArrayList<>();
+        for (int h = 8; h < 12; h++) {
+            lista.add(LocalTime.of(h, 0));
+        }
+        return lista;
+    }
+
+    public List<LocalTime> gerarHorariosTarde() {
+        List<LocalTime> lista = new ArrayList<>();
+        for (int h = 13; h < 17; h++) {
+            lista.add(LocalTime.of(h, 0));
+        }
+        return lista;
+    }
+    public List<LocalTime> filtrarHorariosDisponiveis(LocalDate data, String croDentista,
+            List<LocalTime> horariosTurno) {
+
+        List<LocalTime> disponiveis = new ArrayList<>();
+
+        for (LocalTime h : horariosTurno) {
+
+            int total = consultaRepository.contarConsultasNoHorario(
+                    data,
+                    croDentista,
+                    h
+            );
+
+            if (total < 4) {
+                disponiveis.add(h);
+            }
+        }
+
+        return disponiveis;
+    }
+    public int contarConsultasNoHorario(LocalDate data, String cro, LocalTime hora) {
+        return consultaRepository.contarConsultasNoHorario(data, cro, hora);
+    }
+    public List<Consulta> buscarAgendaDoDia(LocalDate data) {
+        return consultaRepository.buscarPorDataOrdenado(data);
     }
 
 
